@@ -26,7 +26,7 @@ To add this pallet to your runtime, simply include the following to your runtime
 
 ```TOML
 # external pallets
-pallet-rps = {default-features = false, version = '0.1.0', git = 'https://github.com/JetonNetwork/pallet-jton-rps.git'}
+pallet-rps = {default-features = false, version = '0.1.0', git = 'https://github.com/ajuna-network/pallet-jton-rps.git'}
 ```
 
 and update your runtime's `std` feature to include this pallet:
@@ -43,31 +43,15 @@ std = [
 You should implement it's trait like so:
 
 ```rust
-// matchmaker parameters
-parameter_types! {
-    pub const AmountPlayers: u8 = 2;
-    pub const AmountBrackets: u8 = 2;
-}
-
-/// pallet used for matchmaking in pallet-rps.
-impl pallet_matchmaker::Config for Test {
-    type Event = Event;
-    type AmountPlayers = AmountPlayers;
-    type AmountBrackets = AmountBrackets;
-}
-
 /// pallet rps main logic
 impl pallet_rps::Config for Runtime {
     type Event = Event;
-    type Randomness = TestRandomness<Self>;
-    type MatchMaker = MatchMaker;
 }
 ```
 
 and include it in your `construct_runtime!` macro:
 
 ```rust
-    MatchMaker: pallet_matchmaker::{Pallet, Call, Storage, Event<T>},
     RockPaperScissor: pallet_rps::{Pallet, Call, Storage, Event<T>},
 ```
 
