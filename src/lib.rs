@@ -3,7 +3,6 @@
 /// Edit this file to define custom logic or remove it if it is not needed.
 /// Learn more about FRAME and the core library of Substrate FRAME pallets:
 /// <https://substrate.dev/docs/en/knowledgebase/runtime/frame>
-
 pub use pallet::*;
 
 use codec::{Decode, Encode};
@@ -11,9 +10,13 @@ use codec::{Decode, Encode};
 use sp_runtime::{
 	traits::{Hash, TrailingZeroInput}
 };
+
+use scale_info::TypeInfo;
+
 use sp_std::vec::{
 	Vec
 };
+
 use sp_io::hashing::blake2_256;
 
 #[cfg(test)]
@@ -25,7 +28,7 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, TypeInfo)]
 pub enum MatchState {
 	None,
 	Choose,
@@ -37,7 +40,7 @@ pub enum MatchState {
 }
 impl Default for MatchState { fn default() -> Self { Self::None } }
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, TypeInfo)]
 pub enum WeaponType {
 	None,
 	Rock,
@@ -46,7 +49,7 @@ pub enum WeaponType {
 }
 impl Default for WeaponType { fn default() -> Self { Self::None } }
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, TypeInfo)]
 pub enum Choice<Hash> {
 	None,
 	Choose(Hash),
@@ -54,7 +57,7 @@ pub enum Choice<Hash> {
 }
 impl<Hash> Default for Choice<Hash> { fn default() -> Self { Self::None } }
 
-#[derive(Encode, Decode, Default, Clone, PartialEq, Eq)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Game<Hash, AccountId> {
 	pub id: Hash,
@@ -70,17 +73,24 @@ pub mod pallet {
 
 	use super::*;
 
+	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
-
 	}
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
+
+	// The pallet's runtime storage items.
+	// https://substrate.dev/docs/en/knowledgebase/runtime/storage
+	#[pallet::storage]
+	#[pallet::getter(fn something)]
+	// Learn more about declaring storage items:
+	// https://substrate.dev/docs/en/knowledgebase/runtime/storage#declaring-storage-items
+	pub type Something<T> = StorageValue<_, u32>;
 
 	// Default value for Nonce
 	#[pallet::type_value]
@@ -99,8 +109,9 @@ pub mod pallet {
 	/// Store players active games, currently only one game per player allowed.
 	pub type PlayerGame<T: Config> = StorageMap<_, Identity, T::AccountId, T::Hash, ValueQuery>;
 
+	// Pallets use events to inform users when important changes are made.
+	// https://substrate.dev/docs/en/knowledgebase/runtime/events
 	#[pallet::event]
-	#[pallet::metadata(T::AccountId = "AccountId")]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// A new game got created.
@@ -126,15 +137,11 @@ pub mod pallet {
 		BadBehaviour,
 	}
 
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-	}
-
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
 	// These functions materialize as "extrinsics", which are often compared to transactions.
 	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 	#[pallet::call]
-	impl<T:Config> Pallet<T> {
+	impl<T: Config> Pallet<T> {
 
 		/// Create game for two players
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
@@ -383,4 +390,3 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 }
-

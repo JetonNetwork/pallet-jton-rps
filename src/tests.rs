@@ -68,7 +68,7 @@ fn try_rps_player_1_win() {
 
 		run_next_block();
 
-		assert_ok!(RockPaperScissor::choose(Origin::signed(player_1), WeaponType::Scissor, salt_1));
+		assert_ok!(RockPaperScissor::choose(Origin::signed(player_1), WeaponType::Scissors, salt_1));
 		let game = RockPaperScissor::games(game_id);
 		matches!(game.states[0], MatchState::Reveal);
 		matches!(game.states[1], MatchState::Reveal);
@@ -76,7 +76,7 @@ fn try_rps_player_1_win() {
 		run_next_block();
 
 		// Reveal phase
-		assert_ok!(RockPaperScissor::reveal(Origin::signed(player_1), WeaponType::Scissor, salt_1));
+		assert_ok!(RockPaperScissor::reveal(Origin::signed(player_1), WeaponType::Scissors, salt_1));
 		let game = RockPaperScissor::games(game_id);
 		matches!(game.states[0], MatchState::Resolution);
 		matches!(game.states[1], MatchState::Reveal);
@@ -93,7 +93,7 @@ fn try_rps_player_1_win() {
 		let game = RockPaperScissor::games(game_id);
 
 		matches!(game.states[0], MatchState::Won);
-		matches!(game.states[1], MatchState::Lose);
+		matches!(game.states[1], MatchState::Lost);
 
 	});
 }
@@ -143,7 +143,7 @@ fn try_rps_player_2_win() {
 		assert_ok!(RockPaperScissor::reveal(Origin::signed(player_2), WeaponType::Paper, salt_2));
 		let game = RockPaperScissor::games(game_id);
 
-		matches!(game.states[0], MatchState::Lose);
+		matches!(game.states[0], MatchState::Lost);
 		matches!(game.states[1], MatchState::Won);
 
 	});

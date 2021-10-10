@@ -1,22 +1,17 @@
 use super::*;
 use crate as pallet_rps;
 
-use sp_core::H256;
-
 use frame_support::{
 	parameter_types,
 	traits::{OnInitialize, OnFinalize},
-//	weights::Weight,
 };
 
-use frame_support_test::TestRandomness;
+use sp_core::H256;
 use sp_runtime::{
 	BuildStorage,
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-//	Perbill,
 };
-//use frame_system::{EnsureRoot};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -39,7 +34,7 @@ parameter_types! {
 }
 
 impl frame_system::Config for Test {
-	type BaseCallFilter = ();
+	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type DbWeight = ();
@@ -66,14 +61,13 @@ impl frame_system::Config for Test {
 
 impl pallet_rps::Config for Test {
 	type Event = Event;
-	type Randomness = TestRandomness<Self>;
 }
 
 /// Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	//frame_system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
 	let t = GenesisConfig {
-			frame_system: Default::default(),
+			system: Default::default(),
 		}.build_storage().unwrap();
 		t.into()
 }
