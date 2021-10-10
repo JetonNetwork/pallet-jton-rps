@@ -1,4 +1,4 @@
-# Jeton Network Pallet Rock-Paper-Scissor (RPS)
+# Ajuna Network Pallet Rock-Paper-Scissor (RPS)
 
 This is a rock-paper-scissor Substrate pallet which lives as its own crate so it can be imported into multiple runtimes.  
 
