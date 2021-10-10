@@ -7,9 +7,6 @@
 pub use pallet::*;
 
 use codec::{Decode, Encode};
-use frame_support::{
-	traits::{Randomness},
-};
 
 use sp_runtime::{
 	traits::{Hash, TrailingZeroInput}
@@ -28,7 +25,7 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-#[derive(Encode, Decode, Clone, PartialEq, Debug)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug)]
 pub enum MatchState {
 	None,
 	Choose,
@@ -36,20 +33,20 @@ pub enum MatchState {
 	Resolution,
 	Won,
 	Draw,
-	Lose
+	Lost
 }
 impl Default for MatchState { fn default() -> Self { Self::None } }
 
-#[derive(Encode, Decode, Clone, PartialEq, Debug)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug)]
 pub enum WeaponType {
 	None,
 	Rock,
 	Paper,
-	Scissor,
+	Scissors,
 }
 impl Default for WeaponType { fn default() -> Self { Self::None } }
 
-#[derive(Encode, Decode, Clone, PartialEq, Debug)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug)]
 pub enum Choice<Hash> {
 	None,
 	Choose(Hash),
@@ -57,13 +54,13 @@ pub enum Choice<Hash> {
 }
 impl<Hash> Default for Choice<Hash> { fn default() -> Self { Self::None } }
 
-#[derive(Encode, Decode, Default, Clone, PartialEq)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Game<Hash, AccountId> {
-	id: Hash,
-	players: [AccountId; 2],
-	choices: [Choice<Hash>; 2],
-	states:  [MatchState; 2],
+	pub id: Hash,
+	pub players: [AccountId; 2],
+	pub choices: [Choice<Hash>; 2],
+	pub states:  [MatchState; 2],
 }
 
 #[frame_support::pallet]
@@ -79,8 +76,6 @@ pub mod pallet {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		/// The generator used to supply randomness to contracts through `seal_random`.
-		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
 	}
 
 	#[pallet::pallet]
@@ -144,7 +139,7 @@ pub mod pallet {
 		/// Create game for two players
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
 		pub fn new_game(origin: OriginFor<T>, opponent: T::AccountId) -> DispatchResult {
-			
+
 			let sender = ensure_signed(origin)?;
 
 			// Don't allow playing against yourself.
@@ -153,7 +148,7 @@ pub mod pallet {
 			// Make sure players have no board open.
 			ensure!(!PlayerGame::<T>::contains_key(&sender), Error::<T>::PlayerHasGame);
 			ensure!(!PlayerGame::<T>::contains_key(&opponent), Error::<T>::PlayerHasGame);
-			
+
 			// Create new game
 			let _game_id = Self::create_game([sender, opponent]);
 
@@ -167,10 +162,10 @@ pub mod pallet {
 			// Make sure player has a running game.
 			ensure!(PlayerGame::<T>::contains_key(&sender), Error::<T>::GameDoesntExist);
 			let game_id = Self::player_game(&sender);
-			
+
 			// Make sure game exists.
 			ensure!(Games::<T>::contains_key(&game_id), Error::<T>::GameDoesntExist);
-			
+
 			// get players game
 			let mut game = Self::games(&game_id);
 
@@ -241,18 +236,18 @@ pub mod pallet {
 
 			// change player state
 			game.states[me] = MatchState::Resolution;
-			
+
 			// resolve game if both players waiting for resolution
 			if game.states[0] == MatchState::Resolution && game.states[1] == MatchState::Resolution {
 
 				let mut me_weapon: WeaponType = WeaponType::None;
-				if let Choice::Reveal(weapon) = game.choices[me].clone() { 
+				if let Choice::Reveal(weapon) = game.choices[me].clone() {
 					me_weapon = weapon;
 				}
 				let mut he_weapon: WeaponType = WeaponType::None;
 				if let Choice::Reveal(weapon) = game.choices[he].clone() {
 					he_weapon = weapon;
-				}		
+				}
 
 				match Self::game_logic(&me_weapon, &he_weapon) {
 					0 => {
@@ -261,16 +256,16 @@ pub mod pallet {
 					},
 					1 => {
 						game.states[me] = MatchState::Won;
-						game.states[he] = MatchState::Lose;
+						game.states[he] = MatchState::Lost;
 					},
 					2 => {
-						game.states[me] = MatchState::Lose;
+						game.states[me] = MatchState::Lost;
 						game.states[he] = MatchState::Won;
 					},
 					_ => {
 						game.states[me] = MatchState::Draw;
 						game.states[he] = MatchState::Draw;
-					}, 
+					},
 				}
 			}
 
@@ -284,7 +279,7 @@ pub mod pallet {
 
 impl<T: Config> Pallet<T> {
 
-	/// Update nonce once used. 
+	/// Update nonce once used.
 	fn encode_and_update_nonce(
 	) -> Vec<u8> {
 		let nonce = <Nonce<T>>::get();
@@ -294,10 +289,13 @@ impl<T: Config> Pallet<T> {
 
 	/// Generates a random hash out of a seed.
 	fn generate_random_hash(
-		phrase: &[u8], 
+		phrase: &[u8],
 		sender: T::AccountId
 	) -> T::Hash {
-		let (seed, _) = T::Randomness::random(phrase);
+		// FIXME: fake random for now
+		let mut seed = <frame_system::Pallet<T>>::block_number().encode();
+		seed.append(&mut phrase.to_vec());
+		let seed: T::Hash = seed.using_encoded(T::Hashing::hash);
 		let seed = <[u8; 32]>::decode(&mut TrailingZeroInput::new(seed.as_ref()))
 			.expect("input is padded with zeroes; qed");
 		return (seed, &sender, Self::encode_and_update_nonce()).using_encoded(T::Hashing::hash);
@@ -325,7 +323,7 @@ impl<T: Config> Pallet<T> {
 		for player in &players {
 			<PlayerGame<T>>::insert(player, game_id);
 		}
-		
+
 		// emit event for a new game creation
 		Self::deposit_event(Event::NewGame(game_id));
 
@@ -357,7 +355,7 @@ impl<T: Config> Pallet<T> {
 			},
 			WeaponType::Rock => {
 				if a == b {
-					return 0; 
+					return 0;
 				} else if let WeaponType::Paper = b {
 					return 2;
 				} else {
@@ -366,16 +364,16 @@ impl<T: Config> Pallet<T> {
 			},
 			WeaponType::Paper => {
 				if a == b {
-					return 0; 
-				} else if let WeaponType::Scissor = b {
+					return 0;
+				} else if let WeaponType::Scissors = b {
 					return 2;
 				} else {
 					return 1;
 				}
 			},
-			WeaponType::Scissor => {
+			WeaponType::Scissors => {
 				if a == b {
-					return 0; 
+					return 0;
 				} else if let WeaponType::Rock = b {
 					return 2;
 				} else {
